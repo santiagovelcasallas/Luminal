@@ -27,6 +27,10 @@ SCREEN = [(6, 4), (6, 6), (8, 4), (8, 6)]
 
 
 def get_args(argv=None):
+    return build_parser().parse_args(argv)
+
+
+def build_parser():
     ap = argparse.ArgumentParser()
     ap.add_argument("--model", default=PR.MP)
     ap.add_argument("--device", default="cuda:0")
@@ -47,7 +51,7 @@ def get_args(argv=None):
     ap.add_argument("--lmeval_include", default=None)
     ap.add_argument("--fake_data", action="store_true", help="synthetic text instead of Pile/wikitext/dolly (tests)")
     ap.add_argument("--max_layers", type=int, default=0, help="tests only: quantize the first N layers")
-    return ap.parse_args(argv)
+    return ap
 
 
 # ---------------------------------------------------------------- setup shared by every phase
@@ -277,9 +281,7 @@ def preflight(args, log):
     bench.reset()
     bench_sub = B.Bench(dense, tok, sub, args.device, lmeval_tasks=bench.lmeval_tasks, lmeval_include=bench.lmeval_include)
     del bench
-    base, D = mixed.sensitivity(bench_sub, store, sub[:2], ["q2", "q4", "tern"], "q4", P["sens_ids"], log)
-    for m in sub[2:]:
-        D[m] = {"q2": 0.01, "q4": 0.0, "tern": 0.02}
+    base, D = mixed.sensitivity(bench_sub, store, sub, ["q2", "q4", "tern"], "q4", P["sens_ids"], log)
     choice, tot = mixed.knapsack(sub, ["tern", "q2", "q4"], bits, D, 3.0 * N)
     log(f"knapsack ok: {tot / N:.3f} bpw")
     bench_sub.load(weights_for(store, choice, args.device))
