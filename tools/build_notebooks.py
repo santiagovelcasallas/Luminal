@@ -5,7 +5,7 @@ import os
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 LIB = ["qbench/__init__.py", "qbench/protocol.py", "qbench/hadamard.py", "qbench/quant.py", "qbench/hessian.py",
        "qbench/mixed.py", "qbench/bench.py", "qbench/results.py", "qbench/llamacpp.py", "qbench/gptq_worker.py",
-       "qbench/awq_worker.py", "run_phase1.py", "run_phase2.py", "aggregate.py"]
+       "qbench/awq_worker.py", "run_phase1.py", "run_phase2.py", "run_phase3.py", "aggregate.py"]
 
 PINS = "transformers==5.19.0 lm-eval==0.4.13 rouge-score==0.1.2 gguf==0.19.0 sentencepiece"
 
@@ -159,9 +159,39 @@ def phase2():
     return nb(cells)
 
 
+INTRO3 = """
+# Fase 3 — Ablaciones (uniforme log, receta fija, proxy HAWQ, sin rotación)
+
+**Kaggle:** GPU T4 x2, Internet On, *Save & Run All (Commit)*.
+**Recomendado:** adjunta como *Input* la salida de la Fase 1 (para reusar `v1_screening.json` = los mismos k, bz).
+Si no la adjuntas, la celda de screening lo recalcula (~15 min).
+
+Semilla 0 en GPU 0 y semilla 1 en GPU 1. "Sin rotación" solo corre en la semilla 0 (es determinista).
+Tiempo estimado: ~3–4 h. Salida: `out/phase3_seed*.json`, `tables/`.
+"""
+
+
+def phase3():
+    cells = [md(INTRO3), code("RESUME_DIR = None\nLMEVAL_LIMIT = 1000"), code(f"!pip install -q {PINS}")] + code_cells()
+    cells += [code(LAUNCH),
+              code("import glob, shutil\nos.makedirs('/kaggle/working/out', exist_ok=True)\n"
+                   "prev = glob.glob('/kaggle/input/**/v1_screening.json', recursive=True)\n"
+                   "if prev:\n    shutil.copy(prev[0], '/kaggle/working/out/v1_screening.json')\n"
+                   f"else:\n    run('python run_phase1.py --screen_only --device cuda:0 {COMMON}')\n"
+                   "print(open('/kaggle/working/out/v1_screening.json').read()[:300])"),
+              code("def p3(s, gpu):\n"
+                   "    r = f' --resume_from {RESUME_DIR}/phase3_seed{s}.json' if RESUME_DIR else ''\n"
+                   f"    return f'python run_phase3.py --seed {{s}} --device cuda:{{gpu}} --lmeval_limit {{LMEVAL_LIMIT}} {COMMON}' + r\n"
+                   "if NGPU >= 2:\n    launch([('p3_seed0', p3(0, 0)), ('p3_seed1', p3(1, 1))])\n"
+                   "else:\n    launch([('p3', p3(0, 0) + ' && ' + p3(1, 0))])"),
+              code("run('python aggregate.py --inp /kaggle/working/out /kaggle/input --out /kaggle/working/tables')")]
+    return nb(cells)
+
+
 if __name__ == "__main__":
     os.makedirs(os.path.join(ROOT, "notebooks"), exist_ok=True)
-    for name, fn in (("fase1_V1_V2_kaggle.ipynb", phase1), ("fase2_rivales_kaggle.ipynb", phase2)):
+    for name, fn in (("fase1_V1_V2_kaggle.ipynb", phase1), ("fase2_rivales_kaggle.ipynb", phase2),
+                     ("fase3_ablaciones_kaggle.ipynb", phase3)):
         with open(os.path.join(ROOT, "notebooks", name), "w") as f:
             json.dump(fn(), f, indent=1, ensure_ascii=False)
         print("wrote", name)

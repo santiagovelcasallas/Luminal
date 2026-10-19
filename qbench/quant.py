@@ -248,6 +248,8 @@ class QMat:
 
     def weff(self, device, dtype=torch.float32):
         """W_eff = Q · V with V = H_n · diag(s)."""
+        if self.signs is None:  # no rotation
+            return self.dequant_rot(device).float()
         Q = self.dequant_rot(device).to(dtype)
         n = Q.shape[1]
         return ((Q @ hadamard_on(n, device, dtype)) * self.signs.to(device, dtype)[None, :]).float()
