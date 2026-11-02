@@ -1,0 +1,33 @@
+[build-system]
+requires = ["maturin>=1.7,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "luminal-quant"
+version = "0.1.0"
+description = "High-ratio post-training quantization engine (Hadamard rotation + mixed precision), down to 2 bits."
+readme = "README.md"
+requires-python = ">=3.9"
+license = { file = "LICENSE" }
+authors = [{ name = "Santiago Vélez Casallas" }]
+keywords = ["quantization", "llm", "compression", "gptq", "hadamard"]
+classifiers = [
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = ["numpy>=1.23"]
+
+[project.optional-dependencies]
+torch = ["torch>=2.1"]
+dev = ["pytest>=8", "maturin>=1.7"]
+
+[project.urls]
+Repository = "https://github.com/santiagovelcasallas/Luminal"
+
+[tool.maturin]
+# The Rust crate lives in this dir; the importable Python package is python/luminal_quant.
+python-source = "python"
+module-name = "luminal_quant._native"
+features = ["python"]
