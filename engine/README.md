@@ -4,10 +4,13 @@ High-ratio post-training quantization for LLMs — Hadamard rotation + standardi
 precision with logarithmic scales — down to **2 bits per weight**, at quality that beats the open
 state of the art below ~3 bpw on the measured benchmarks.
 
-> **Status: 0.1 skeleton.** The compiled Rust core currently exposes the Hadamard rotation
-> primitive, validated bit-for-bit against a NumPy reference. The full pipeline (GPTQ, ternary,
-> mixed-precision knapsack) is being ported from the reference Python implementation in
-> [`../qbench`](../qbench); CUDA kernels land behind the `cuda` feature.
+> **Status: 0.1.** The compiled Rust core exposes two primitives, each validated against the reference
+> Python pipeline in [`../qbench`](../qbench): the **Hadamard rotation** (bit-for-bit vs NumPy) and the
+> **uniform-grid GPTQ** quantizer (functional parity — same codes >99%, Hessian-weighted dequant error
+> <0.5%). GPTQ runs row-parallel (`rayon`); on CPU it beats the PyTorch path ~2.8× at 1024×1024 and
+> ties at 2048×2048 — the trailing error-compensation step is BLAS-bound and needs the CUDA kernel
+> (behind the `cuda` feature) to scale. Log-scale and ternary finders, and the mixed-precision
+> knapsack, stay in Python for now (already backed by PyTorch C/CUDA; porting them buys little).
 
 ## Why
 

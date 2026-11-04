@@ -16,6 +16,7 @@
 //! optional CUDA kernels compile behind the `cuda` feature. The Python extension is a thin wrapper.
 
 pub mod error;
+pub mod gptq;
 pub mod hadamard;
 
 pub use error::{QuantError, Result};
